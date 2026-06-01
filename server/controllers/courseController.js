@@ -1,4 +1,5 @@
 const Course = require("../models/Course");
+const Review = require("../models/Review");
 
 const createCourse = async (req, res) => {
 
@@ -15,12 +16,14 @@ const createCourse = async (req, res) => {
       title,
       description,
       thumbnail,
+      category,
     } = req.body;
 
     const course = await Course.create({
       title,
       description,
       thumbnail,
+      category: category || "Other",
 
       // Logged-in teacher becomes instructor
       instructor: req.user.userId,
@@ -67,7 +70,13 @@ const getCourseById = async (req, res) => {
       req.params.id
     ).populate(
       "instructor",
-      "name email"
+      "name email profilePic"
+    ).populate(
+      "questions.user",
+      "name profilePic"
+    ).populate(
+      "questions.replies.user",
+      "name profilePic"
     );
 
     if (!course) {
@@ -409,6 +418,159 @@ const unenrollCourse = async (
     });
   }
 };
+
+const addReview = async (req, res) => {
+  try {
+    const { rating, comment } = req.body;
+    const courseId = req.params.id;
+    const userId = req.user.userId;
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    // Check if the student is enrolled (or is the instructor/admin)
+    const isEnrolled = course.enrolledStudents.includes(userId);
+    const isInstructor = course.instructor.toString() === userId;
+    if (!isEnrolled && !isInstructor && req.user.role !== "admin") {
+      return res.status(403).json({ message: "You must be enrolled to leave a review" });
+    }
+
+    // Upsert review (update if exists, insert if new)
+    const review = await Review.findOneAndUpdate(
+      { course: courseId, user: userId },
+      { rating: Number(rating), comment: comment || "" },
+      { new: true, upsert: true }
+    );
+
+    res.status(200).json({ message: "Review submitted successfully", review });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getReviews = async (req, res) => {
+  try {
+    const courseId = req.params.id;
+    const reviews = await Review.find({ course: courseId })
+      .populate("user", "name profilePic")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(reviews);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const addQuestion = async (req, res) => {
+  try {
+    const { text } = req.body;
+    const courseId = req.params.id;
+    const userId = req.user.userId;
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    course.questions.push({
+      user: userId,
+      text,
+      replies: []
+    });
+
+    await course.save();
+
+    const updatedCourse = await Course.findById(courseId)
+      .populate("questions.user", "name profilePic")
+      .populate("questions.replies.user", "name profilePic");
+
+    res.status(200).json({
+      message: "Question posted successfully",
+      questions: updatedCourse.questions
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const replyToQuestion = async (req, res) => {
+  try {
+    const { text } = req.body;
+    const { id: courseId, questionId } = req.params;
+    const userId = req.user.userId;
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    const question = course.questions.id(questionId);
+    if (!question) {
+      return res.status(404).json({ message: "Question not found" });
+    }
+
+    question.replies.push({
+      user: userId,
+      text
+    });
+
+    await course.save();
+
+    const updatedCourse = await Course.findById(courseId)
+      .populate("questions.user", "name profilePic")
+      .populate("questions.replies.user", "name profilePic");
+
+    res.status(200).json({
+      message: "Reply posted successfully",
+      questions: updatedCourse.questions
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const updateCourse = async (req, res) => {
+  try {
+    if (req.user.role !== "teacher" && req.user.role !== "admin") {
+      return res.status(403).json({
+        message: "Only teachers can update courses",
+      });
+    }
+
+    const course = await Course.findById(req.params.id);
+    if (!course) {
+      return res.status(404).json({
+        message: "Course not found",
+      });
+    }
+
+    if (course.instructor.toString() !== req.user.userId && req.user.role !== "admin") {
+      return res.status(403).json({
+        message: "You can only edit your own courses",
+      });
+    }
+
+    const { title, description, thumbnail, category } = req.body;
+    if (title) course.title = title;
+    if (description) course.description = description;
+    if (thumbnail) course.thumbnail = thumbnail;
+    if (category) course.category = category;
+
+    await course.save();
+
+    res.status(200).json({
+      message: "Course updated successfully",
+      course,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   createCourse,
   getCourses,
@@ -420,4 +582,9 @@ module.exports = {
   deleteVideo,
   deleteCourse,
   unenrollCourse,
+  addReview,
+  getReviews,
+  addQuestion,
+  replyToQuestion,
+  updateCourse,
 };

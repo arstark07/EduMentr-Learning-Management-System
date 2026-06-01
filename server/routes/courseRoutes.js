@@ -13,6 +13,11 @@ const {
   deleteVideo,
   deleteCourse,
   unenrollCourse,
+  addReview,
+  getReviews,
+  addQuestion,
+  replyToQuestion,
+  updateCourse,
 } = require("../controllers/courseController");
 
 const authMiddleware = require("../middleware/authMiddleware");
@@ -55,11 +60,24 @@ router.delete(
   authMiddleware,
   deleteCourse
 );
+router.put(
+  "/:id",
+  authMiddleware,
+  updateCourse
+);
 router.post(
   "/unenroll/:id",
   authMiddleware,
   unenrollCourse
 );
 router.get("/:id", getCourseById);
+
+// Reviews routes
+router.get("/:id/reviews", getReviews);
+router.post("/:id/reviews", authMiddleware, addReview);
+
+// Q&A routes
+router.post("/:id/questions", authMiddleware, addQuestion);
+router.post("/:id/questions/:questionId/reply", authMiddleware, replyToQuestion);
 
 module.exports = router;

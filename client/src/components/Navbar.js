@@ -25,45 +25,45 @@ function Navbar() {
 
   return (
 
-    // Navbar background and text styling
-    <div className="bg-blue-600 text-white p-4">
+    // Navbar background and text styling with Udemy dark-slate theme
+    <div className="bg-slate-900 border-b border-slate-850 text-white py-4 px-6 md:px-8 shadow-md">
 
       {/* Container for navbar content */}
-      <div className="max-w-6xl mx-auto flex justify-between items-center">
+      <div className="max-w-7xl mx-auto flex justify-between items-center">
 
         {/* Logo / Website name */}
         <Link
           to="/dashboard"
-          className="text-2xl font-bold"
+          className="text-2xl font-black tracking-tight text-white flex items-center gap-2 hover:opacity-90 transition"
         >
-          LMS
+          <span className="text-indigo-500">🎓</span> Edumentr
         </Link>
 
         {/* Navigation links section */}
-        <div className="flex gap-4 items-center">
+        <div className="flex gap-6 items-center text-sm font-semibold">
 
           {/* Dashboard link */}
-          <Link to="/dashboard">
-            Dashboard
+          <Link to="/dashboard" className="text-slate-200 hover:text-indigo-400 transition">
+            Discovery Catalog
           </Link>
 
           {/* My Courses link */}
           <Link
             to="/my-courses"
-            className="text-white"
+            className="text-slate-200 hover:text-indigo-400 transition"
           >
             My Courses
           </Link>
 
           {/* Profile page link */}
-          <Link to="/profile">
+          <Link to="/profile" className="text-slate-200 hover:text-indigo-400 transition">
             Profile
           </Link>
 
           {/* Logout button */}
           <button
             onClick={logout}
-            className="bg-red-500 px-4 py-2 rounded"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl transition shadow-md shadow-indigo-900/20 text-xs"
           >
             Logout
           </button>
